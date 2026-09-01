@@ -11,7 +11,8 @@ class OdeResultPassos:
         self.sol = None
         self.t_min = 1
         self.t_max = -1
-        self.Eventos = {event.__name__ : np.array([]) for event in events}
+        if events:
+            self.Eventos = {event.__name__ : np.array([]) for event in np.atleast_1d(events)}
         self.events = events
         self.Integrou = True
         self.UnicoInterp = True
@@ -155,10 +156,10 @@ def integracaoIntervalos(funIVP , tIntervalos:list, Y0:list|tuple, events=None, 
         SolFinal = SolOld
 
     Y0Atu = Y0
+    funIVP = np.atleast_1d(funIVP)
     nEstados = len(funIVP)
     for i, (t1,t2) in enumerate(zip(tIntervalos[:-1], tIntervalos[1:])):
         Sol = solve_ivp(fun=funIVP[i%nEstados], t_span=(t1,t2), dense_output=True, y0=Y0Atu, events=events, **options)
-        # SolFinal.concatenaSolucao(Sol)
         Y0Atu = Sol.y[:,-1]
         if Sol.status == 1:
             SolFinal.concatenaSolucao(Sol, Integrou=False)
