@@ -5,13 +5,13 @@ class OdeResultPassos:
     from scipy.integrate import OdeSolution
     import numpy as np
     
-    def __init__(self, events = []):
+    def __init__(self, events = None):
         self.success = True
         self.t = np.array([])
         self.sol = None
         self.t_min = 1
         self.t_max = -1
-        if events:
+        if events is not None:
             self.Eventos = {event.__name__ : np.array([]) for event in np.atleast_1d(events)}
         self.events = events
         self.Integrou = True
@@ -56,10 +56,10 @@ class OdeResultPassos:
             updateLast = True
         self.t = np.concatenate((self.t[:-1], Sol.t + self.tTranslac))
 
-
-        for j, event in enumerate(self.events):
-            key = event.__name__
-            self.Eventos[key] = np.concatenate((self.Eventos[key], Sol.t_events[j]+self.tTranslac))
+        if self.events is not None:
+            for j, event in enumerate(self.events):
+                key = event.__name__
+                self.Eventos[key] = np.concatenate((self.Eventos[key], Sol.t_events[j]+self.tTranslac))
 
         self.lastT = Sol.t[-1]
         self.joinInterpolador(Sol.sol, updateLast=updateLast)
