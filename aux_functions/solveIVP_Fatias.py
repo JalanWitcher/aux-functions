@@ -121,7 +121,32 @@ class OdeResultPassos:
             self.tSol[-1] = self.Interpoladores[-1].t_max - self.Interpoladores[-1].t_min
             self.updateCumTime()
 
-def integracaoIntervalos(funIVP, tIntervalos, Y0, events=None, SolOld=None, **options):
+def integracaoIntervalos(funIVP , tIntervalos:list, Y0:list|tuple, events=None, SolOld:OdeResultPassos|None=None, **options) -> OdeResultPassos:
+    """
+    Integrates an initial value problem (IVP) over specified time intervals using the provided function(s) and initial condition.
+
+    Parameters
+    ----------
+    funIVP : callable or list of callables
+        The function(s) defining the system of ordinary differential equations (ODEs). If a list is provided, the functions are cyclic trough the intervals.
+    
+    tIntervalos : list
+        A list of limits of integration intervals. The integration will be performed over each pair of consecutive limits.
+
+    Y0 : list or tuple
+        The initial condition for the ODE system at the start of the first interval.
+
+    events : callable or list of callables, optional
+        Event functions for the integration, passed to 'scipy.integrate.solve_ivp'. 
+
+    SolOld : OdeResultPassos or None, optional
+        An existing solution object to which the new results will be appended. If None, a new solution object will be created.
+
+    Returns
+    -------
+    OdeResultPassos
+        An object containing the concatenated results of the integration over all specified intervals. 
+    """
     from scipy.integrate import solve_ivp
 
     if SolOld is None:
