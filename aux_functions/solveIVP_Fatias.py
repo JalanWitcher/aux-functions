@@ -207,7 +207,7 @@ def integracaoIntervalos(funIVP , tIntervalos:list, Y0:list|tuple, events=None, 
     funIVP = np.atleast_1d(funIVP)
     nEstados = len(funIVP)
     for i, (t1,t2) in enumerate(zip(tIntervalos[:-1], tIntervalos[1:])):
-        eventsAtu = events[(t2>=eventStart)*(t2<=eventEnd) + (t1<=eventStart)*(t2>=eventEnd)]
+        eventsAtu = events[(t2>=eventStart)*(t2<=eventEnd) + (t1<=eventStart)*(t2>=eventEnd)] if events is not None else None
         Sol = solve_ivp(fun=funIVP[i%nEstados], t_span=(t1,t2), dense_output=True, y0=Y0Atu, events=eventsAtu, **options)
         Y0Atu = Sol.y[:,-1]
         if Sol.status == 1:
