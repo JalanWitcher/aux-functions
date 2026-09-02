@@ -42,7 +42,7 @@ class OdeResultPassos:
             self.t_min = self.sol.t_min
             self.t_max = self.sol.t_max
 
-    def concatenaSolucao(self, Sol, Integrou=True):
+    def concatenaSolucao(self, Sol, Integrou=True, events=None):
         self.success *= Sol.success
         self.Integrou = self.Integrou and Integrou
 
@@ -55,9 +55,9 @@ class OdeResultPassos:
         else:
             updateLast = True
         self.t = np.concatenate((self.t[:-1], Sol.t + self.tTranslac))
-
-        if self.events is not None:
-            for j, event in enumerate(self.events):
+        events = self.events if events is None else events
+        if events is not None:
+            for j, event in enumerate(events):
                 key = event.__name__
                 self.Eventos[key] = np.concatenate((self.Eventos[key], Sol.t_events[j]+self.tTranslac))
 
@@ -122,7 +122,7 @@ class OdeResultPassos:
             self.tSol[-1] = self.Interpoladores[-1].t_max - self.Interpoladores[-1].t_min
             self.updateCumTime()
 
-def integracaoIntervalos(funIVP , tIntervalos:list, Y0:list|tuple, events=None, SolOld:OdeResultPassos|None=None, **options) -> OdeResultPassos:
+def integracaoIntervalos(funIVP , tIntervalos:list, Y0:list|tuple, events=None, eventStart= None, eventEnd=None, SolOld:OdeResultPassos|None=None, **options) -> OdeResultPassos:
     """
     Integrates an initial value problem (IVP) over specified time intervals using the provided function(s) and initial condition.
 
@@ -139,6 +139,16 @@ def integracaoIntervalos(funIVP , tIntervalos:list, Y0:list|tuple, events=None, 
 
     events : callable or list of callables, optional
         Event functions for the integration, passed to 'scipy.integrate.solve_ivp'. 
+    
+    eventStart : number or list of numbers, optional
+        Times at which each event should start to be verified.
+        If single number, it is applied for every event.
+        Negative times are converted to tIntervalos[0] + abs(t)
+
+    eventEnd : number or list of numbers, optional
+        Times at which each event shloud stop being verified.
+        If single number, it is applied for every event.
+        Negative times are converted to tIntervalos[-1] - abs(t)
 
     SolOld : OdeResultPassos or None, optional
         An existing solution object to which the new results will be appended. If None, a new solution object will be created.
@@ -149,6 +159,44 @@ def integracaoIntervalos(funIVP , tIntervalos:list, Y0:list|tuple, events=None, 
         An object containing the concatenated results of the integration over all specified intervals. 
     """
     from scipy.integrate import solve_ivp
+    
+    if (events is not None):
+        numEvents = len(events)
+        iL = 0
+        for func in events:
+            if func.__name__ == '<lambda>':
+                import inspect
+                code = inspect.getsource(func).strip()
+                if "=lambda" in code.replace(" ", ""):
+                    func.__name__ = code.split("=")[0].strip()
+                else:
+                    func.__name__ = f"<lambda>{iL}"
+                    iL += 1
+
+        if eventStart is None:
+            eventStart = numEvents*[tIntervalos[0]]
+        elif len(np.atleast_1d(eventStart)) == 1:
+            eventStart = numEvents*[eventStart]
+        if eventEnd is None:
+            eventEnd = numEvents*[tIntervalos[-1]]
+        elif len(np.atleast_1d(eventEnd)) == 1:
+            eventEnd = numEvents*[eventEnd]
+
+        if len(eventStart) < numEvents:
+            eventStart += (numEvents - len(eventStart))*[tIntervalos[0]]
+        for i, t in enumerate(eventStart):
+            if t < 0:
+                eventStart[i] = tIntervalos[0] - t
+        if len(eventEnd) < numEvents:
+            eventEnd += (numEvents - len(eventEnd))*[tIntervalos[-1]]
+        for i, t in enumerate(eventEnd):
+            if t < 0:
+                # eventEnd[i] = eventStart[i] + abs(t)
+                eventEnd[i] = tIntervalos[i] + t 
+
+        events = np.asarray(events)
+        eventStart = np.asarray(eventStart)
+        eventEnd = np.asarray(eventEnd)
 
     if SolOld is None:
         SolFinal = OdeResultPassos(events=events)
@@ -159,11 +207,12 @@ def integracaoIntervalos(funIVP , tIntervalos:list, Y0:list|tuple, events=None, 
     funIVP = np.atleast_1d(funIVP)
     nEstados = len(funIVP)
     for i, (t1,t2) in enumerate(zip(tIntervalos[:-1], tIntervalos[1:])):
-        Sol = solve_ivp(fun=funIVP[i%nEstados], t_span=(t1,t2), dense_output=True, y0=Y0Atu, events=events, **options)
+        eventsAtu = events[(t2>=eventStart)*(t2<=eventEnd) + (t1<=eventStart)*(t2>=eventEnd)]
+        Sol = solve_ivp(fun=funIVP[i%nEstados], t_span=(t1,t2), dense_output=True, y0=Y0Atu, events=eventsAtu, **options)
         Y0Atu = Sol.y[:,-1]
         if Sol.status == 1:
-            SolFinal.concatenaSolucao(Sol, Integrou=False)
+            SolFinal.concatenaSolucao(Sol, Integrou=False, events=eventsAtu)
             break
-        SolFinal.concatenaSolucao(Sol, Integrou=True)
+        SolFinal.concatenaSolucao(Sol, Integrou=True, events=eventsAtu)
 
     return SolFinal
