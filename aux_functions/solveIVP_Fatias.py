@@ -8,7 +8,7 @@ class OdeResultPassos:
     def __init__(self, events = None):
         self.success = True
         self.t = np.array([])
-        self.sol = None
+        self.sol = lambda t: np.array([])
         self.t_min = 1
         self.t_max = -1
         if events is not None:
@@ -78,7 +78,6 @@ class OdeResultPassos:
         with np.printoptions(precision=3, edgeitems=3, threshold=10):
             for key in self.__dict__:
                 strRepr += f"{key:>10}: {self.__dict__[key].__str__():<50}\n"
-                # print(f"{key:>10}: {self.__dict__[key].__str__():<50}")
         return strRepr
 
     class SolucaoConjunta:
@@ -146,7 +145,7 @@ def integracaoIntervalos(funIVP , tIntervalos:list, Y0:list|tuple, events=None, 
         Negative times are converted to tIntervalos[0] + abs(t)
 
     eventEnd : number or list of numbers, optional
-        Times at which each event shloud stop being verified.
+        Times at which each event should stop being verified.
         If single number, it is applied for every event.
         Negative times are converted to tIntervalos[-1] - abs(t)
 
@@ -164,15 +163,18 @@ def integracaoIntervalos(funIVP , tIntervalos:list, Y0:list|tuple, events=None, 
         numEvents = len(events)
         iL = 0
         for func in events:
+            # Verify if the function is a lambda function and assign a name accordingly
             if func.__name__ == '<lambda>':
                 import inspect
                 code = inspect.getsource(func).strip()
+                # Verify if the lambda function is assigned to a variable
                 if "=lambda" in code.replace(" ", ""):
                     func.__name__ = code.split("=")[0].strip()
-                else:
+                else: # Assign a indexed name to the function
                     func.__name__ = f"<lambda>{iL}"
                     iL += 1
 
+        # Handle eventStart and eventEnd parameters size and content
         if eventStart is None:
             eventStart = numEvents*[tIntervalos[0]]
         elif len(np.atleast_1d(eventStart)) == 1:
@@ -191,10 +193,8 @@ def integracaoIntervalos(funIVP , tIntervalos:list, Y0:list|tuple, events=None, 
             eventEnd += (numEvents - len(eventEnd))*[tIntervalos[-1]]
         for i, t in enumerate(eventEnd):
             if t < 0:
-                # eventEnd[i] = eventStart[i] + abs(t)
                 eventEnd[i] = tIntervalos[i] + t 
 
-        events = np.asarray(events)
         eventStart = np.asarray(eventStart)
         eventEnd = np.asarray(eventEnd)
 
@@ -207,7 +207,8 @@ def integracaoIntervalos(funIVP , tIntervalos:list, Y0:list|tuple, events=None, 
     funIVP = np.atleast_1d(funIVP)
     nEstados = len(funIVP)
     for i, (t1,t2) in enumerate(zip(tIntervalos[:-1], tIntervalos[1:])):
-        eventsAtu = events[(t2>=eventStart)*(t2<=eventEnd) + (t1<=eventStart)*(t2>=eventEnd)] if events is not None else None
+        eventMask = (t2>=eventStart)*(t2<=eventEnd) + (t1<=eventStart)*(t2>=eventEnd)
+        eventsAtu = [event for event, mask in zip(events, eventMask) if mask] if events is not None else None
         Sol = solve_ivp(fun=funIVP[i%nEstados], t_span=(t1,t2), dense_output=True, y0=Y0Atu, events=eventsAtu, **options)
         Y0Atu = Sol.y[:,-1]
         if Sol.status == 1:
