@@ -1,5 +1,3 @@
-
-
 def identificaNumeros(string, dtype=float):
     import re
     import numpy as np

@@ -4,5 +4,5 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aux_functions"
-version = "0.2.0"
-dependencies = []
+version = "0.2.1"
+dependencies = ["plotly", "numpy", "re", "scipy"]
