@@ -1,4 +1,4 @@
-import generalAux
+from . import generalAux
 
 def PreparaFiguraPlots(nPlots, sub_title=None, cols=2, type='xy', **kwrd):
     from plotly.subplots import make_subplots

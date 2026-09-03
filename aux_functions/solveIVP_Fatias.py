@@ -8,7 +8,7 @@ class OdeResultPassos:
     def __init__(self, events = None):
         self.success = True
         self.t = np.array([])
-        self.sol = lambda t: np.array([])
+        self.sol = lambda t: np.nan
         self.t_min = 1
         self.t_max = -1
         if events is not None:
@@ -24,7 +24,7 @@ class OdeResultPassos:
 
     def joinInterpolador(self, interpolador, updateLast=True):
         if self.UnicoInterp:
-            if self.sol is None:
+            if self.sol(-1) is np.nan:
                 self.sol = interpolador
                 self.t_min = interpolador.t_min
                 self.t_max = interpolador.t_max
@@ -55,6 +55,7 @@ class OdeResultPassos:
         else:
             updateLast = True
         self.t = np.concatenate((self.t[:-1], Sol.t + self.tTranslac))
+
         events = self.events if events is None else events
         if events is not None:
             for j, event in enumerate(events):
@@ -121,7 +122,7 @@ class OdeResultPassos:
             self.tSol[-1] = self.Interpoladores[-1].t_max - self.Interpoladores[-1].t_min
             self.updateCumTime()
 
-def integracaoIntervalos(funIVP , tIntervalos:list, Y0:list|tuple, events=None, eventStart= None, eventEnd=None, SolOld:OdeResultPassos|None=None, **options) -> OdeResultPassos:
+def integracaoIntervalos(funIVP, tIntervalos:list, Y0:list|tuple, events=None, eventStart= None, eventEnd=None, SolOld:OdeResultPassos|None=None, **options) -> OdeResultPassos:
     """
     Integrates an initial value problem (IVP) over specified time intervals using the provided function(s) and initial condition.
 
